@@ -52,28 +52,151 @@ const observeResponses = () => {
 };
 
 function initializeExtension() {
-  observeResponses();
-  
-  // Remove existing button if it exists
-  const existingButton = document.getElementById('shortcuts-floating-button');
-  if (existingButton) {
-    existingButton.remove();
+  // Only initialize if the button doesn't already exist
+  if (document.getElementById('shortcuts-floating-button')) {
+    return;
   }
+
+  observeResponses();
   
   // Create new button using shared component
   const button = createFloatingButton();
   button.addEventListener('click', showShortcutsModal);
-  document.body.appendChild(button);
+
+  // Updated selectors to find the topbar container
+  const selectors = [
+    // Original selectors
+    'div.hidden.flex-row-reverse.gap-1\\.5.md\\:flex',
+    'div[class*="hidden"][class*="flex-row-reverse"][class*="md:flex"]',
+    'div.flex-row-reverse.md\\:flex',
+    // New selectors
+    'header div[class*="flex-row-reverse"]',
+    'nav[class*="flex-row-reverse"]',
+    'div[class*="topbar"] div[class*="flex-row-reverse"]',
+    // Generic fallbacks
+    'header > div > div[class*="flex"]',
+    'div[role="banner"] div[class*="flex-row"]'
+  ];
+
+  function findTopbarContainer() {
+    // Try all selectors
+    for (const selector of selectors) {
+      const container = document.querySelector(selector);
+      if (container) return container;
+    }
+    
+    // Fallback: Look for any div that looks like a topbar
+    const possibleContainers = Array.from(document.querySelectorAll('div'))
+      .filter(div => {
+        const style = window.getComputedStyle(div);
+        return (
+          style.display.includes('flex') &&
+          style.position === 'fixed' &&
+          (style.top === '0px' || parseInt(style.top) < 20) &&
+          div.offsetHeight < 100 && // Typical header height
+          div.offsetWidth > window.innerWidth * 0.5 // At least half the viewport width
+        );
+      });
+    
+    return possibleContainers[0];
+  }
+
+  function insertButton(container) {
+    if (!container) return false;
+    
+    // Try to find a good insertion point
+    const insertionPoints = [
+      container,
+      container.querySelector('div[class*="flex"]'),
+      container.firstElementChild,
+      container
+    ];
+
+    for (const point of insertionPoints) {
+      if (point) {
+        try {
+          point.appendChild(button);
+          return true;
+        } catch (e) {
+          console.log('Failed to insert at point:', e);
+          continue;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Initial attempt
+  let topbarContainer = findTopbarContainer();
+  if (insertButton(topbarContainer)) return;
+
+  // If initial attempt fails, retry with a mutation observer
+  const observer = new MutationObserver((mutations, obs) => {
+    // Don't proceed if button already exists
+    if (document.getElementById('shortcuts-floating-button')) {
+      obs.disconnect();
+      return;
+    }
+
+    topbarContainer = findTopbarContainer();
+    if (insertButton(topbarContainer)) {
+      obs.disconnect();
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
+
+  // Set a timeout to stop observing after 10 seconds
+  setTimeout(() => {
+    observer.disconnect();
+    // If still no success, create a floating button
+    if (!document.getElementById('shortcuts-floating-button')) {
+      button.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: var(--bg-primary, #ffffff);
+        border: 1px solid var(--border-primary, #e5e7eb);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      `;
+      document.body.appendChild(button);
+    }
+  }, 10000);
 }
 
-// Listen for both DOMContentLoaded and potential page changes
-document.addEventListener('DOMContentLoaded', initializeExtension);
+// Only add DOMContentLoaded listener if document is not already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeExtension);
+} else {
+  initializeExtension();
+}
 
-// Add a MutationObserver to handle dynamic page changes
+// Modify the observer to be more specific about when to reinitialize
 const pageObserver = new MutationObserver((mutations) => {
-  const shortcutsButton = document.getElementById('shortcuts-floating-button');
-  if (!shortcutsButton) {
-    initializeExtension();
+  // Don't proceed if button already exists
+  if (document.getElementById('shortcuts-floating-button')) {
+    return;
+  }
+
+  for (const mutation of mutations) {
+    // Check if any added nodes contain our target container
+    for (const node of mutation.addedNodes) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const container = node.querySelector?.('div.hidden.flex-row-reverse.gap-1\\.5.md\\:flex') || 
+                         (node.matches?.('div.hidden.flex-row-reverse.gap-1\\.5.md\\:flex') ? node : null);
+        
+        if (container) {
+          initializeExtension();
+          break;
+        }
+      }
+    }
   }
 });
 
@@ -81,11 +204,6 @@ pageObserver.observe(document.body, {
   childList: true,
   subtree: true
 });
-
-// Execute initialization immediately if document is already loaded
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  initializeExtension();
-}
 
 document.addEventListener('keydown', (event) => {
   const textarea = document.querySelector('textarea');

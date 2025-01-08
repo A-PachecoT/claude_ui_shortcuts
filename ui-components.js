@@ -167,39 +167,40 @@ window.createFloatingButton = function() {
   const button = document.createElement('button');
   button.id = 'shortcuts-floating-button';
   button.innerHTML = `
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M20 5H4V19H20V5Z" stroke="${CLAUDE_COLORS.darkText}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 5H4V19H20V5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M8 9H8.01M12 9H12.01M16 9H16.01M8 13H8.01M12 13H12.01M16 13H16.01M8 17H16" 
-            stroke="${CLAUDE_COLORS.darkText}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `;
   button.title = 'Keyboard Shortcuts';
   
-  button.style.cssText = `
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 36px;
-    height: 36px;
-    border-radius: ${CLAUDE_STYLES.borderRadius};
-    background: ${CLAUDE_COLORS.buttonBackground};
-    border: none;
-    cursor: pointer;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: ${CLAUDE_STYLES.transition};
-    padding: 6px;
-  `;
-
-  button.onmouseover = () => {
-    button.style.background = CLAUDE_COLORS.buttonBackgroundHover;
-  };
-  
-  button.onmouseout = () => {
-    button.style.background = CLAUDE_COLORS.buttonBackground;
-  };
+  button.className = `inline-flex
+    items-center
+    justify-center
+    relative
+    shrink-0
+    ring-offset-2
+    ring-offset-bg-300
+    ring-accent-main-100
+    focus-visible:outline-none
+    focus-visible:ring-1
+    disabled:pointer-events-none
+    disabled:opacity-50
+    disabled:shadow-none
+    disabled:drop-shadow-none 
+    text-text-200
+    border-transparent
+    transition-colors
+    font-styrene
+    active:bg-bg-400
+    hover:bg-bg-500/40
+    hover:text-text-100 
+    h-9 
+    w-9 
+    rounded-md 
+    active:scale-95 
+    shrink-0`;
 
   return button;
 };
